@@ -1,0 +1,3 @@
+package config
+
+const GithubToken string = "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"
