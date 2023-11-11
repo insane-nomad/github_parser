@@ -1,3 +1,3 @@
 package config
 
-const GithubToken string = ""
+const GithubToken string = "g"
