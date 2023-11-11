@@ -60,7 +60,7 @@ func GetLimit(agent *fiber.Agent) Limits {
 	code, response, errs := agent.Bytes()
 
 	if code != fiber.StatusOK {
-		fmt.Println(code)
+		fmt.Println("Return code:", code, " from limit file")
 	}
 
 	if errs != nil {
