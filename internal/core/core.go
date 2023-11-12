@@ -6,7 +6,6 @@ import (
 	"github_parser/internal/config"
 	"github_parser/internal/files"
 	"github_parser/internal/limit"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -31,16 +30,6 @@ type Items struct {
 	HTMLURL         string    `json:"html_url"`
 	CreatedAt       time.Time `json:"created_at"`
 	StargazersCount int       `json:"stargazers_count"`
-}
-
-func makeDir(dirname string) {
-	_, err := os.Stat("files/" + dirname)
-	if os.IsNotExist(err) {
-		if err := os.Mkdir("files/"+dirname, os.ModePerm); err != nil {
-			//log.Fatal(err)
-			fmt.Println(err)
-		}
-	}
 }
 
 func getData(agent *fiber.Agent, url string) RepositoryData {
@@ -73,90 +62,84 @@ func getData(agent *fiber.Agent, url string) RepositoryData {
 }
 
 func GetfirstRepo(agent *fiber.Agent) RepositoryData {
-	firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32&sort=updated&order=asc&per_page=1&page=1")
-	//firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32+created%3A2015-04-25&sort=updated&order=asc&per_page=100&page=1")
+	// "2016-05-08"
+	//firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32&sort=updated&order=asc&per_page=1&page=1")
+	firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32+created%3A2016-05-18&sort=updated&order=asc&per_page=1&page=1")
 
 	return firstRepoData
 }
 
-func GetAllRepo(agent *fiber.Agent, from time.Time) {
-	wg := &sync.WaitGroup{}
-	mu := &sync.Mutex{}
-	start := time.Now()
+func Worker(inputData Items, wg *sync.WaitGroup) {
+	defer wg.Done()
 	starString := ""
-	created := "+created%3A"
-
-	for from.Before(start) {
-
-		date := ""
-		// из за лимита запросов (30 поисковых запросов в минуту) спим полторы секунды после каждого запроса
-
-		getLimits := limit.GetLimit(agent)
-
-		fmt.Printf("\nRemaining resources: %#+v, ", getLimits.Resources.Search.Remaining)
-		fmt.Printf("Used resources: %#+v\n", getLimits.Resources.Search.Used)
-
-		// Создаем строку из 10 дней
-		for i := 0; i < 20; i++ {
-			date = date + created + from.Format(time.DateOnly)
-			from = from.Add(time.Hour * 24)
+	//fmt.Printf("--------%v\n", inputData)
+	if inputData.Owner.Login != "" {
+		if inputData.StargazersCount != 0 {
+			starString = " [s-" + strconv.Itoa(inputData.StargazersCount) + "]"
+		} else {
+			starString = ""
 		}
 
-		fmt.Printf("From date: %#+v\n", from.Format(time.DateOnly))
-		fmt.Printf("Active goroutines: %#+v\n", runtime.NumGoroutine())
-		for i := 1; i < 11; i++ {
-			allrepos := getData(agent, "https://api.github.com/search/repositories?q=stm32"+date+"&per_page=100&page="+strconv.Itoa(i))
-			fmt.Printf("Files num: %#+v\n", allrepos.TotalCount)
+		//fullName := "files/" + val.Owner.Login + "/" + val.Name + starString + ".zip"
+		fullName := "files/" + inputData.Name + " (" + inputData.Owner.Login + ")" + starString + ".zip"
+		fileExist, _ := files.Exists(fullName)
 
-			for key, val := range allrepos.Items {
-				wg.Add(1)
-				go func(key int, val Items) {
-					mu.Lock()
-					//makeDir(val.Owner.Login)
-					if val.StargazersCount != 0 {
-						starString = " [s-" + strconv.Itoa(val.StargazersCount) + "]"
-					} else {
-						starString = ""
-					}
-
-					//fullName := "files/" + val.Owner.Login + "/" + val.Name + starString + ".zip"
-					fullName := "files/" + val.Name + " (" + val.Owner.Login + ")" + starString + ".zip"
-					fileExist, _ := files.Exists(fullName)
-					mu.Unlock()
-					if !fileExist {
-						fmt.Printf("Goroutine %v started downloading file: %v\n", key, fullName)
-
-						GetFile := files.GetFileFromURL(val.HTMLURL + "/archive/refs/heads/master.zip")
-						checkFile := strings.Contains(GetFile, `<!DOCTYPE html>`)
-						if !checkFile {
-							saveZipFile := files.SaveFile(fullName, GetFile)
-							if saveZipFile != nil {
-								files.SaveTxt("download_error.txt", fullName)
-								fmt.Println(saveZipFile)
-							}
-						}
-					}
-
-					wg.Done()
-				}(key, val)
-			}
-
-			wg.Wait()
-			pause := 61 - int(time.Since(start).Seconds())
-			if getLimits.Resources.Search.Used > 26 {
-				fmt.Printf("Pause %#+v seconds\n", pause)
-				for i := pause; i > 0; i-- {
-
-					fmt.Printf("\rRemaining %2v seconds", i)
-					time.Sleep(time.Second * 1)
+		if !fileExist {
+			fmt.Printf("Goroutine started downloading file: %v\n", fullName)
+			GetFile := files.GetFileFromURL(inputData.HTMLURL + "/archive/refs/heads/master.zip")
+			checkFile := strings.Contains(GetFile, `<!DOCTYPE html>`)
+			if !checkFile {
+				saveZipFile := files.SaveFile(fullName, GetFile)
+				if saveZipFile != nil {
+					files.SaveTxt("download_error.txt", fullName)
+					fmt.Println(saveZipFile)
 				}
-				start = time.Now()
+			} else {
+				files.SaveTxt("url_error.txt", inputData.HTMLURL+"/archive/refs/heads/master.zip")
 			}
+			fmt.Printf("Goroutine comleted downloading file: %v\n", fullName)
+		}
+	}
+}
 
-			if allrepos.TotalCount < 101 {
-				break
-			}
+func GetAllRepo(agent *fiber.Agent, from time.Time) chan Items {
+	outputChan := make(chan Items, 100)
+	start := time.Now()
+	created := "+created%3A"
+	date := ""
+	getLimits := limit.GetLimit(agent)
+	defer close(outputChan)
+
+	fmt.Printf("\nRemaining resources: %#+v, ", getLimits.Resources.Search.Remaining)
+	fmt.Printf("Used resources: %#+v\n", getLimits.Resources.Search.Used)
+
+	// Создаем строку из 10 дней
+	for i := 0; i < 1; i++ {
+		date = date + created + from.Format(time.DateOnly)
+	}
+
+	fmt.Printf("From date: %#+v\n", from.Format(time.DateOnly))
+	fmt.Printf("Active goroutines: %#+v\n", runtime.NumGoroutine())
+	for i := 1; i < 11; i++ {
+		allrepos := getData(agent, "https://api.github.com/search/repositories?q=stm32"+date+"&per_page=100&page="+strconv.Itoa(i))
+		fmt.Printf("Files num: %#+v\n", allrepos.TotalCount)
+		for _, val := range allrepos.Items {
+			outputChan <- val
 		}
 
+		if allrepos.TotalCount < 101 {
+			break
+		}
 	}
+
+	pause := 61 - int(time.Since(start).Seconds())
+	if getLimits.Resources.Search.Used > 26 {
+		fmt.Printf("Pause %#+v seconds\n", pause)
+		for i := pause; i > 0; i-- {
+			fmt.Printf("\rRemaining %2v seconds", i)
+			time.Sleep(time.Second * 1)
+		}
+	}
+
+	return outputChan
 }
