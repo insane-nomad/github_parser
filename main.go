@@ -1,7 +1,7 @@
+// main.exe | tee mylog.txt
 package main
 
 import (
-	"fmt"
 	"github_parser/internal/core"
 
 	"github.com/gofiber/fiber/v2"
@@ -9,9 +9,9 @@ import (
 
 func main() {
 	agent := fiber.AcquireAgent()
-	//https://api.github.com/search/repositories?q=stm32+created%3A2022-03-01+created%3A2022-03-02+created%3A2022-03-03+created%3A2022-03-04+created%3A2022-03-05&per_page=100&page=1
-	//getLimits := limit.GetLimit(agent)
-	//fmt.Printf("%#+v", getLimits)
-	getFirstRepoData := core.GetfirstRepo(agent)
-	fmt.Printf("%#+v", getFirstRepoData.Items[0].CreatedAt)
+	// получаем дату самого первого размещенного репозитория
+	getFirstRepoData := core.GetfirstRepo(agent).Items[0].CreatedAt
+	// получаем остальные репозитории от даты первого репозитория
+	core.GetAllRepo(agent, getFirstRepoData)
+
 }
