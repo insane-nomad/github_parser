@@ -103,7 +103,6 @@ func GetAllRepo(agent *fiber.Agent, from time.Time) {
 		}
 
 		fmt.Printf("From date: %#+v\n", from.Format(time.DateOnly))
-		//fmt.Printf("From date: %#+v\n", date)
 		fmt.Printf("Active goroutines: %#+v\n", runtime.NumGoroutine())
 		for i := 1; i < 11; i++ {
 			allrepos := getData(agent, "https://api.github.com/search/repositories?q=stm32"+date+"&per_page=100&page="+strconv.Itoa(i))
