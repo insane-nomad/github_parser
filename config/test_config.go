@@ -1,3 +1,3 @@
-package config
+ package config
 
-const GithubToken string = "YOUR GITHUB TOKEN HERE"
+ const GithubToken1 string = "YOUR GITHUB TOKEN HERE"
