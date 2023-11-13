@@ -3,7 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"github_parser/internal/config"
+	"github_parser/config"
 	"github_parser/internal/files"
 	"github_parser/internal/limit"
 	"runtime"
@@ -64,14 +64,14 @@ func getData(agent *fiber.Agent, url string) RepositoryData {
 }
 
 func GetfirstRepo(agent *fiber.Agent, searchString string) RepositoryData {
-	// "2016-05-08"
 	firstRepoData := getData(agent, "https://api.github.com/search/repositories?q="+searchString+"&sort=updated&order=asc&per_page=1&page=1")
-	//firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32+created%3A2016-05-18&sort=updated&order=asc&per_page=1&page=1")
+	//firstRepoData := getData(agent, "https://api.github.com/search/repositories?q="+searchString+"+created%3A2020-05-27&sort=updated&order=asc&per_page=1&page=1")
 
 	return firstRepoData
 }
 
 func Worker(inputData Items, wg *sync.WaitGroup) {
+	wg.Add(1)
 	defer wg.Done()
 	starString := ""
 	if inputData.Owner.Login != "" {

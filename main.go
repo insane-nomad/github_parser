@@ -18,7 +18,6 @@ func main() {
 	agent := fiber.AcquireAgent()
 	start := time.Now()
 	wg := &sync.WaitGroup{}
-	// 2018-06-25
 	// получаем дату самого первого размещенного репозитория
 	getFirstRepoData := core.GetfirstRepo(agent, searchString).Items[0].CreatedAt
 
