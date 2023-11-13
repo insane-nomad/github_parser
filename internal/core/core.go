@@ -15,6 +15,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+var start time.Time
+
 type RepositoryData struct {
 	TotalCount int     `json:"total_count"`
 	Items      []Items `json:"items"`
@@ -61,10 +63,10 @@ func getData(agent *fiber.Agent, url string) RepositoryData {
 	return repoData
 }
 
-func GetfirstRepo(agent *fiber.Agent) RepositoryData {
+func GetfirstRepo(agent *fiber.Agent, searchString string) RepositoryData {
 	// "2016-05-08"
-	//firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32&sort=updated&order=asc&per_page=1&page=1")
-	firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32+created%3A2016-05-18&sort=updated&order=asc&per_page=1&page=1")
+	firstRepoData := getData(agent, "https://api.github.com/search/repositories?q="+searchString+"&sort=updated&order=asc&per_page=1&page=1")
+	//firstRepoData := getData(agent, "https://api.github.com/search/repositories?q=stm32+created%3A2016-05-18&sort=updated&order=asc&per_page=1&page=1")
 
 	return firstRepoData
 }
@@ -72,7 +74,6 @@ func GetfirstRepo(agent *fiber.Agent) RepositoryData {
 func Worker(inputData Items, wg *sync.WaitGroup) {
 	defer wg.Done()
 	starString := ""
-	//fmt.Printf("--------%v\n", inputData)
 	if inputData.Owner.Login != "" {
 		if inputData.StargazersCount != 0 {
 			starString = " [s-" + strconv.Itoa(inputData.StargazersCount) + "]"
@@ -102,26 +103,23 @@ func Worker(inputData Items, wg *sync.WaitGroup) {
 	}
 }
 
-func GetAllRepo(agent *fiber.Agent, from time.Time) chan Items {
+func GetAllRepo(agent *fiber.Agent, from time.Time, searchString string) chan Items {
 	outputChan := make(chan Items, 100)
-	start := time.Now()
-	created := "+created%3A"
-	date := ""
 	getLimits := limit.GetLimit(agent)
 	defer close(outputChan)
 
 	fmt.Printf("\nRemaining resources: %#+v, ", getLimits.Resources.Search.Remaining)
 	fmt.Printf("Used resources: %#+v\n", getLimits.Resources.Search.Used)
-
-	// Создаем строку из 10 дней
-	for i := 0; i < 1; i++ {
-		date = date + created + from.Format(time.DateOnly)
+	if getLimits.Resources.Search.Used == 1 {
+		start = time.Now()
 	}
+
+	date := "+created%3A" + from.Format(time.DateOnly)
 
 	fmt.Printf("From date: %#+v\n", from.Format(time.DateOnly))
 	fmt.Printf("Active goroutines: %#+v\n", runtime.NumGoroutine())
 	for i := 1; i < 11; i++ {
-		allrepos := getData(agent, "https://api.github.com/search/repositories?q=stm32"+date+"&per_page=100&page="+strconv.Itoa(i))
+		allrepos := getData(agent, "https://api.github.com/search/repositories?q="+searchString+date+"&per_page=100&page="+strconv.Itoa(i))
 		fmt.Printf("Files num: %#+v\n", allrepos.TotalCount)
 		for _, val := range allrepos.Items {
 			outputChan <- val
@@ -133,7 +131,7 @@ func GetAllRepo(agent *fiber.Agent, from time.Time) chan Items {
 	}
 
 	pause := 61 - int(time.Since(start).Seconds())
-	if getLimits.Resources.Search.Used > 26 {
+	if getLimits.Resources.Search.Used > 28 {
 		fmt.Printf("Pause %#+v seconds\n", pause)
 		for i := pause; i > 0; i-- {
 			fmt.Printf("\rRemaining %2v seconds", i)
