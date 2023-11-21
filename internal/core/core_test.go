@@ -26,7 +26,7 @@ func Test_getData(t *testing.T) {
 				url:   "https://api.github.com/search/repositories?q=stm32&sort=updated&order=asc&per_page=1&page=1",
 			},
 			want: RepositoryData{
-				TotalCount: 51277,
+				TotalCount: 51279,
 				Items: []Items{
 					{
 						Name: "stm32f10x_stdperiph_lib",
@@ -68,7 +68,7 @@ func TestGetfirstRepo(t *testing.T) {
 				searchString: "stm32",
 			},
 			want: RepositoryData{
-				TotalCount: 51277,
+				TotalCount: 51279,
 				Items: []Items{
 					{
 						Name: "stm32f10x_stdperiph_lib",

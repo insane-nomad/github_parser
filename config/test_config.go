@@ -1,3 +1,5 @@
- package config
+package config
 
- const GithubToken1 string = "YOUR GITHUB TOKEN HERE"
+// rename this file to config.go
+
+const GithubToken1 string = "YOUR GITHUB TOKEN HERE"
