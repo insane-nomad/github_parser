@@ -3,9 +3,9 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"github_parser/config"
 	"github_parser/internal/files"
 	"github_parser/internal/limit"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -37,7 +37,7 @@ type Items struct {
 func getData(agent *fiber.Agent, url string) RepositoryData {
 	var repoData RepositoryData
 	// добавляем к запросу аутентификационный токен
-	agent.Add("Authorization", "Bearer "+config.GithubToken)
+	agent.Add("Authorization", "Bearer "+os.Getenv("GithubToken"))
 	req := agent.Request()
 	req.Header.SetMethod(fiber.MethodGet)
 	// отправляем запрос

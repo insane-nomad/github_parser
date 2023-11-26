@@ -3,7 +3,7 @@ package limit
 import (
 	"encoding/json"
 	"fmt"
-	"github_parser/config"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -25,7 +25,7 @@ type Resources struct {
 func GetLimit(agent *fiber.Agent) Limits {
 	var limitData Limits
 
-	agent.Add("Authorization", "Bearer "+config.GithubToken)
+	agent.Add("Authorization", "Bearer "+os.Getenv("GithubToken"))
 	req := agent.Request()
 	req.Header.SetMethod(fiber.MethodGet)
 	req.SetRequestURI("https://api.github.com/rate_limit")

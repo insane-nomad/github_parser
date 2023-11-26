@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"github_parser/internal/core"
+	"os"
 	"sync"
 	"time"
 
@@ -12,12 +13,17 @@ import (
 
 func main() {
 	var searchString string
+	if os.Getenv("GithubToken") == "" {
+		fmt.Println("Устаните переменную окружения с названием \"GithubToken\" и значением вашего токена, перезагрузите ПК и запустите программу заново")
+		return
+	}
 	fmt.Println("Введите поисковый запрос: ")
 	fmt.Scanf("%s\n", &searchString)
 
 	agent := fiber.AcquireAgent()
 	start := time.Now()
 	wg := &sync.WaitGroup{}
+
 	// получаем дату самого первого размещенного репозитория
 	getFirstRepoData := core.GetfirstRepo(agent, searchString).Items[0].CreatedAt
 
